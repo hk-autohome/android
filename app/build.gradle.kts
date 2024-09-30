@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
+    kotlin("kapt") // Add this line to apply the KAPT plugin
 }
 
 android {
@@ -49,7 +50,6 @@ android {
 val plutoVersion = "2.2.2"
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -73,4 +73,8 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.navigation:navigation-compose:2.8.1")
     implementation("com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.3")
+    implementation("com.google.code.gson:gson:2.10.1")
+    implementation(libs.androidx.room.runtime)
+    kapt(libs.androidx.room.compiler) // Room compiler
+    implementation(libs.androidx.room.ktx)
 }

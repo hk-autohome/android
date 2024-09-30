@@ -7,12 +7,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.harshkanjariya.autohome.Device
+import com.harshkanjariya.autohome.db.entity.DeviceEntity
 import com.pluto.Pluto
 import com.pluto.plugins.network.okhttp.PlutoOkhttpInterceptor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -20,7 +19,7 @@ import okhttp3.Response
 import java.io.IOException
 
 @Composable
-fun DeviceDetailScreen(device: Device, onRemovePrefs: () -> Unit) {
+fun DeviceDetailScreen(device: DeviceEntity, onRemovePrefs: () -> Unit) {
     // Track power state (1 for ON, 0 for OFF)
     var powerState by remember { mutableStateOf(0) }
 
