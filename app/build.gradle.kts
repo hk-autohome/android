@@ -74,6 +74,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.1")
     implementation("com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.3")
     implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.27.0")
     implementation(libs.androidx.room.runtime)
     kapt(libs.androidx.room.compiler) // Room compiler
     implementation(libs.androidx.room.ktx)

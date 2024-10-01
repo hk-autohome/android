@@ -76,7 +76,7 @@ fun DeviceFinder(onDeviceSelected: (String, String) -> Unit) {
 
         devices.forEach { (deviceId, index) ->
             Text(
-                text = deviceId,
+                text = deviceId + " (${baseUrl}${index})",
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
