@@ -17,6 +17,7 @@ import com.harshkanjariya.autohome.db.AppDatabase
 import com.harshkanjariya.autohome.db.entity.DeviceEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
@@ -38,7 +39,7 @@ fun showDeviceFinderDialog(onDismiss: () -> Unit, context: Context) {
             shape = MaterialTheme.shapes.medium,
         ) {
             DeviceFinder { deviceId, deviceIndex ->
-                val device = DeviceEntity(deviceId, deviceIndex.toString())
+                val device = DeviceEntity(deviceId, deviceIndex)
                 addDeviceToDatabase(device, context)
                 onDismiss()
             }
@@ -48,9 +49,10 @@ fun showDeviceFinderDialog(onDismiss: () -> Unit, context: Context) {
 
 @Composable
 fun DeviceFinder(onDeviceSelected: (String, String) -> Unit) {
-    var devices by remember { mutableStateOf(listOf<Pair<String, Int>>()) }
+    var devices by remember { mutableStateOf(listOf<Pair<String, String>>()) }
     var isSearching by remember { mutableStateOf(false) }
     val baseUrl = getLocalIpAddressBase()
+    var searchJob by remember { mutableStateOf<Job?>(null) }
 
     Column(
         modifier = Modifier
@@ -60,9 +62,13 @@ fun DeviceFinder(onDeviceSelected: (String, String) -> Unit) {
     ) {
         Button(onClick = {
             isSearching = true // Start searching
-            fetchDeviceIds(baseUrl) { foundDevices ->
-                devices = foundDevices // Update devices
-                isSearching = false // Stop searching
+            devices = listOf() // Clear previous devices
+
+            searchJob?.cancel()
+
+            searchJob = fetchDeviceIds(baseUrl) { foundDevice ->
+                // Add each found device to the list
+                devices = devices + foundDevice
             }
         }) {
             Text("Find Devices")
@@ -76,16 +82,53 @@ fun DeviceFinder(onDeviceSelected: (String, String) -> Unit) {
 
         devices.forEach { (deviceId, index) ->
             Text(
-                text = deviceId + " (${baseUrl}${index})",
+                text = "$deviceId ($index)",
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        onDeviceSelected(deviceId, baseUrl + index)
+                        onDeviceSelected(deviceId, index)
+                        searchJob?.cancel()
                     }
                     .padding(8.dp)
             )
             Divider()
         }
+    }
+}
+
+fun fetchDeviceIds(baseUrl: String, onDeviceFound: (Pair<String, String>) -> Unit): Job {
+    val client = OkHttpClient.Builder()
+        .callTimeout(5, TimeUnit.SECONDS)
+        .build()
+
+    return CoroutineScope(Dispatchers.IO).launch {
+        // Iterate over the last two octets of the IP address
+        val requests = (0..255).flatMap { lastOctet1 ->
+            (0..255).map { lastOctet2 ->
+                async {
+                    val url = "http://${baseUrl}${lastOctet1}.${lastOctet2}/device_id"
+                    try {
+                        val request = Request.Builder().url(url).build()
+                        client.newCall(request).execute().use { response: Response ->
+                            if (response.isSuccessful) {
+                                response.body?.string()?.let { deviceId ->
+                                    // Notify of the found device
+                                    synchronized(this) {
+                                        onDeviceFound(Pair(deviceId, "${baseUrl}$lastOctet1.$lastOctet2")) // Store device ID with last two octets
+                                    }
+                                }
+                            } else {
+                                Log.e("DeviceFinder", "Request failed for $url: ${response.message}")
+                            }
+                        }
+                    } catch (e: IOException) {
+                        Log.e("DeviceFinder", "fetchDeviceIds: Error fetching $url - ${e.message}")
+                    }
+                }
+            }
+        }
+
+        requests.awaitAll()
     }
 }
 
@@ -102,52 +145,14 @@ fun getLocalIpAddressBase(): String {
                 if (!inetAddress.isLoopbackAddress) {
                     // Get the first three octets of the IP address for base URL
                     val ip = inetAddress.hostAddress?.split(".")
-                    return "${ip?.get(0)}.${ip?.get(1)}.${ip?.get(2)}."
+                    return "${ip?.get(0)}.${ip?.get(1)}."
                 }
             }
         }
     } catch (e: Exception) {
         Log.e("DeviceFinder", "Error getting local IP address: ${e.message}")
     }
-    return "192.168.1." // Default fallback if IP address cannot be found
-}
-
-fun fetchDeviceIds(baseUrl: String, onDeviceFound: (List<Pair<String, Int>>) -> Unit) {
-    val client = OkHttpClient.Builder()
-        .callTimeout(2, TimeUnit.SECONDS)
-        .build()
-
-    CoroutineScope(Dispatchers.IO).launch {
-        val devices = mutableListOf<Pair<String, Int>>()
-        val requests = (1..254).map { i ->
-            async {
-                val url = "http://${baseUrl}$i/device_id"
-                try {
-                    val request = Request.Builder().url(url).build()
-                    client.newCall(request).execute().use { response: Response ->
-                        if (response.isSuccessful) {
-                            response.body?.string()?.let { deviceId ->
-                                synchronized(devices) {
-                                    devices.add(Pair(deviceId, i)) // Store device ID and index
-                                }
-                            }
-                        } else {
-                            Log.e("DeviceFinder", "Request failed for $url: ${response.message}")
-                        }
-                    }
-                } catch (e: IOException) {
-                    Log.e("DeviceFinder", "fetchDeviceIds: Error fetching $url - ${e.message}")
-                }
-            }
-        }
-
-        requests.awaitAll()
-
-        withContext(Dispatchers.Main) {
-            Log.e("TAG", "fetchDeviceIds: " + devices.size)
-            onDeviceFound(devices)
-        }
-    }
+    return "192.168." // Default fallback if IP address cannot be found
 }
 
 fun addDeviceToDatabase(device: DeviceEntity, context: Context) {

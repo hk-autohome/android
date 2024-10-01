@@ -24,7 +24,10 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
     compileOptions {
@@ -75,6 +78,7 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.3")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.google.accompanist:accompanist-swiperefresh:0.27.0")
+    implementation("javax.jmdns:jmdns:3.4.1")
     implementation(libs.androidx.room.runtime)
     kapt(libs.androidx.room.compiler) // Room compiler
     implementation(libs.androidx.room.ktx)
