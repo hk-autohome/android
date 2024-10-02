@@ -11,6 +11,6 @@ interface ButtonDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertButton(button: ButtonEntity)
 
-    @Query("SELECT buttonNumber FROM buttons WHERE deviceId = :deviceId")
-    fun getButtonsForDevice(deviceId: String): List<Int>
+    @Query("SELECT * FROM buttons WHERE deviceId = :deviceId")
+    fun getButtonsForDevice(deviceId: String): List<ButtonEntity>
 }

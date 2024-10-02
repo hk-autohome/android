@@ -1,37 +1,18 @@
 package com.harshkanjariya.autohome
 
-import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.room.Room
 import com.harshkanjariya.autohome.db.AppDatabase
-import com.harshkanjariya.autohome.ui.DeviceDetailScreen
 import com.harshkanjariya.autohome.ui.theme.AutoHomeTheme
 import com.pluto.Pluto
 import com.pluto.plugins.network.PlutoNetworkPlugin
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,23 +31,18 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AutoHomeTheme {
-                var showDeviceFinder by remember { mutableStateOf(false) }
-                var reloadDevices by remember { mutableStateOf(false) }  // Flag to reload devices
+                val navController = rememberNavController()
 
-                Scaffold(
-                    floatingActionButton = {
-                        FloatingActionButton(onClick = { showDeviceFinder = true }) {
-                            Text("+")  // FloatingActionButton content
+                NavHost(navController = navController, startDestination = "devicesList") {
+                    composable("devicesList") {
+                        DevicesHome(this@MainActivity, Modifier) {
+                            navController.navigate("deviceDetails/$it")
                         }
                     }
-                ) {
-                    if (showDeviceFinder) {
-                        showDeviceFinderDialog({
-                            showDeviceFinder = false
-                            reloadDevices = !reloadDevices
-                        }, this@MainActivity)
+                    composable("deviceDetails/{deviceId}") { backStackEntry ->
+                        val deviceId = backStackEntry.arguments?.getString("deviceId")
+                        DeviceDetailScreen(deviceId!!, context = this@MainActivity)
                     }
-                    DevicesHome(this@MainActivity, reloadDevices, Modifier.padding(it))
                 }
             }
         }
