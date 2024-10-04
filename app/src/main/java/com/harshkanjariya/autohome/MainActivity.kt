@@ -21,13 +21,7 @@ class MainActivity : ComponentActivity() {
         Pluto.Installer(application)
             .addPlugin(PlutoNetworkPlugin())
             .install()
-
-        val db = Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java,
-            "your-database-name"
-        ).build()
-
+        Pluto.showNotch(true)
 
         setContent {
             AutoHomeTheme {
@@ -35,7 +29,7 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(navController = navController, startDestination = "devicesList") {
                     composable("devicesList") {
-                        DevicesHome(this@MainActivity, Modifier) {
+                        DevicesHome(this@MainActivity) {
                             navController.navigate("deviceDetails/$it")
                         }
                     }

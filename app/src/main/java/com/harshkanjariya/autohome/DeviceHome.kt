@@ -21,35 +21,48 @@ import okhttp3.Request
 import java.io.IOException
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.harshkanjariya.autohome.api.checkDeviceStatus
 
 @Composable
-fun DevicesHome(context: Context, modifier: Modifier, navigate: (String) -> Unit) {
+fun DevicesHome(context: Context, navigate: (String) -> Unit) {
     val db = remember { AppDatabase.getDatabase(context) }
     var devices by remember { mutableStateOf(listOf<DeviceEntity>()) }
     var refreshing by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     var showDeviceFinder by remember { mutableStateOf(false) }
 
-    // Swipe-to-refresh implementation
+    LaunchedEffect(Unit) {
+        coroutineScope.launch(Dispatchers.IO) {
+            devices = db.deviceDao().getDevices()
+        }
+    }
+
     SwipeRefresh(
         state = rememberSwipeRefreshState(isRefreshing = refreshing),
         onRefresh = {
             refreshing = true
             coroutineScope.launch(Dispatchers.IO) {
-                devices = db.deviceDao().getDevices() // Load devices again
+                devices = db.deviceDao().getDevices()
                 refreshing = false
             }
         }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+            ) {
                 Text(text = "Stored Devices", style = MaterialTheme.typography.headlineMedium)
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -64,14 +77,13 @@ fun DevicesHome(context: Context, modifier: Modifier, navigate: (String) -> Unit
                 }
             }
 
-            // FloatingActionButton at the bottom right
             FloatingActionButton(
                 onClick = { showDeviceFinder = true },
                 modifier = Modifier
-                    .align(Alignment.BottomEnd) // Aligns to the bottom right
-                    .padding(16.dp) // Adds padding from the edges
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
             ) {
-                Text("+")  // FloatingActionButton content
+                Text("+")
             }
 
             if (showDeviceFinder) {
@@ -79,7 +91,7 @@ fun DevicesHome(context: Context, modifier: Modifier, navigate: (String) -> Unit
                     onDismiss = {
                         showDeviceFinder = false
                         coroutineScope.launch(Dispatchers.IO) {
-                            devices = db.deviceDao().getDevices() // Refresh devices after adding a new one
+                            devices = db.deviceDao().getDevices()
                         }
                     },
                     context = context
@@ -93,19 +105,13 @@ fun DevicesHome(context: Context, modifier: Modifier, navigate: (String) -> Unit
 @Composable
 fun DeviceListItem(device: DeviceEntity, context: Context, onClick: () -> Unit) {
     var buttons by remember { mutableStateOf(listOf<ButtonEntity>()) }
-    var showAddDialog by remember { mutableStateOf(false) }
-    var deviceStatus by remember { mutableStateOf(false) } // State to hold the device's status
-    var errorMessage by remember { mutableStateOf<String?>(null) } // State to store error messages
+    var deviceStatus by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Use LaunchedEffect to load buttons for the device
     LaunchedEffect(device.id) {
         coroutineScope.launch(Dispatchers.IO) {
             buttons = getButtonsForDevice(device.id, context)
-            // Call API to check device status
-            deviceStatus = checkDeviceStatus(device.ip, device.id) {
-                errorMessage = it
-            }
+            deviceStatus = checkDeviceStatus(device.ip, device.id) {}
         }
     }
 
@@ -115,18 +121,14 @@ fun DeviceListItem(device: DeviceEntity, context: Context, onClick: () -> Unit) 
             .clickable { onClick() }
             .padding(8.dp)
     ) {
-        errorMessage?.let {
-            Text(text = it, color = Color.Red, style = MaterialTheme.typography.bodySmall)
-        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = device.id, style = MaterialTheme.typography.bodyLarge)
+                Text(text = device.name, style = MaterialTheme.typography.bodyLarge)
 
-                // Red/Green dot to indicate status
                 Box(
                     modifier = Modifier
                         .padding(start = 8.dp)
@@ -137,214 +139,12 @@ fun DeviceListItem(device: DeviceEntity, context: Context, onClick: () -> Unit) 
                         )
                 )
             }
-
-            IconButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Button")
-            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-            Button(
-                onClick = {
-                    coroutineScope.launch(Dispatchers.IO) {
-                        callApi(device.ip, 2, {
-                            Log.e("TAG", "DeviceListItem: $it")
-                        }) {
-                            errorMessage = it
-                        }
-                    }
-                },
-                modifier = Modifier.padding(end = 4.dp)
-            ) {
-                Text("LED")
-            }
-
-            buttons.forEach { button ->
-                Button(
-                    onClick = {
-                        coroutineScope.launch(Dispatchers.IO) {
-                            callApi(device.ip, button.buttonNumber + 3, {
-                                Log.e("TAG", "DeviceListItem: $it")
-                            }) {
-                                errorMessage = it
-                            }
-                        }
-                    },
-                    modifier = Modifier.padding(end = 4.dp)
-                ) {
-                    Text("$button")
-                }
-            }
-        }
-
         Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-        if (showAddDialog) {
-            AddButtonDialog(
-                existingButtons = buttons,
-                onDismiss = { showAddDialog = false },
-                onAddButton = { newButton, name ->
-                    // Add the new button to the database and update UI
-                    coroutineScope.launch(Dispatchers.IO) {
-                        addButtonForDevice(device.id, newButton, name, context)
-                        buttons = getButtonsForDevice(device.id, context) // Reload buttons
-                        showAddDialog = false
-                    }
-                }
-            )
-        }
     }
-}
-
-fun callApi(deviceIp: String, pin: Int, onComplete: (String) -> Unit, onError: (String) -> Unit) {
-    val url = "http://$deviceIp/control?pin=$pin"
-    val client = OkHttpClient()
-
-    val request = Request.Builder()
-        .url(url)
-        .build()
-
-    try {
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                onError("Error: ${response.code} ${response.message}")
-                return
-            }
-            val body = response.body?.string() ?: ""
-            onComplete(body)
-        }
-    } catch (e: IOException) {
-        onError("Network error: ${e.message}")
-    } catch (e: Exception) {
-        onError("Unexpected error: ${e.message}")
-    }
-}
-
-fun checkDeviceStatus(deviceIp: String, deviceId: String, onError: (String) -> Unit): Boolean {
-    val url = "http://$deviceIp/device_id"
-    val client = OkHttpClient()
-
-    val request = Request.Builder()
-        .url(url)
-        .build()
-
-    return try {
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                onError("Error: ${response.code} ${response.message}")
-                return false
-            }
-            val body = response.body?.string() ?: ""
-            onError("")
-            body == deviceId // Return true if the ID matches
-        }
-    } catch (e: IOException) {
-        onError("Network error: ${e.message}")
-        false
-    } catch (e: Exception) {
-        onError("Unexpected error: ${e.message}")
-        false
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AddButtonDialog(
-    existingButtons: List<ButtonEntity>,
-    onDismiss: () -> Unit,
-    onAddButton: (Int, String) -> Unit
-) {
-    var newName by remember { mutableStateOf("") } // For name input
-    var selectedNumber by remember { mutableStateOf<Int?>(null) } // For number selection
-    val context = LocalContext.current
-
-    // Allowed button numbers: 1, 10, 13 to 30
-    val allowedNumbers = listOf(1, 10) + (13..30).toList()
-
-    var expanded by remember { mutableStateOf(false) } // State to control dropdown visibility
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(text = "Add Button") },
-        text = {
-            Column {
-                // TextField for entering the button name
-                TextField(
-                    value = newName,
-                    onValueChange = { newName = it },
-                    label = { Text("Button Name") },
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Dropdown for selecting button number
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    TextField(
-                        value = selectedNumber?.toString() ?: "Select Number",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Button Number") },
-                        trailingIcon = {
-                            Icon(
-                                imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.ArrowDropDown,
-                                contentDescription = null
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    // Dropdown menu
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        allowedNumbers.forEach { number ->
-                            DropdownMenuItem(onClick = {
-                                selectedNumber = number
-                                expanded = false
-                            }, text = {
-                                Text(text = number.toString())
-                            })
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Show existing buttons
-                existingButtons.forEach { button ->
-                    Text("Existing Button: $button")
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (newName.isBlank()) {
-                        Toast.makeText(context, "Name cannot be empty", Toast.LENGTH_SHORT).show()
-                    } else if (selectedNumber == null) {
-                        Toast.makeText(context, "Please select a valid button number", Toast.LENGTH_SHORT).show()
-                    } else {
-                        onAddButton(selectedNumber!!, newName) // Pass selected number and name
-                        onDismiss()
-                    }
-                }
-            ) {
-                Text("Add")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
 }
 
 fun getButtonsForDevice(deviceId: String, context: Context): List<ButtonEntity> {

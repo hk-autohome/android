@@ -79,6 +79,7 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.google.accompanist:accompanist-swiperefresh:0.27.0")
     implementation("javax.jmdns:jmdns:3.4.1")
+    implementation("com.google.accompanist:accompanist-flowlayout:0.30.0")
     implementation(libs.androidx.room.runtime)
     kapt(libs.androidx.room.compiler) // Room compiler
     implementation(libs.androidx.room.ktx)

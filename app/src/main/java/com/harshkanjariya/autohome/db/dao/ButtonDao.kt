@@ -13,4 +13,7 @@ interface ButtonDao {
 
     @Query("SELECT * FROM buttons WHERE deviceId = :deviceId")
     fun getButtonsForDevice(deviceId: String): List<ButtonEntity>
+
+    @Query("DELETE FROM buttons WHERE deviceId = :deviceId and buttonNumber = :buttonNumber")
+    fun deleteButton(deviceId: String, buttonNumber: Int)
 }

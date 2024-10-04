@@ -16,13 +16,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.harshkanjariya.autohome.db.AppDatabase
 import com.harshkanjariya.autohome.db.entity.DeviceEntity
+import com.harshkanjariya.autohome.ui.dialog.NameChangeDialog
+import com.harshkanjariya.autohome.ui.dialog.PasswordValidatorDialog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -40,13 +41,12 @@ fun showDeviceFinderDialog(onDismiss: () -> Unit, context: Context) {
             shape = MaterialTheme.shapes.medium,
         ) {
             DeviceFinder(
-                onDeviceSelected = { deviceId, deviceIndex ->
-                    val device = DeviceEntity(deviceId, deviceIndex, "")
+                onDeviceSelected = { device ->
                     addDeviceToDatabase(device, context)
-                    onDismiss() // Close the dialog after adding the device
+                    onDismiss()
                 },
                 onCancel = {
-                    onDismiss() // Close the dialog when cancel is pressed
+                    onDismiss()
                 }
             )
         }
@@ -55,48 +55,76 @@ fun showDeviceFinderDialog(onDismiss: () -> Unit, context: Context) {
 
 @Composable
 fun DeviceFinder(
-    onDeviceSelected: (String, String) -> Unit,
+    onDeviceSelected: (DeviceEntity) -> Unit,
     onCancel: () -> Unit
 ) {
     var devices by remember { mutableStateOf(listOf<Pair<String, String>>()) }
-    var isSearching by remember { mutableStateOf(true) }  // Start searching by default
+    val isSearching by remember { mutableStateOf(true) }
     val baseUrl = getLocalIpAddressBase()
     var searchJob by remember { mutableStateOf<Job?>(null) }
 
-    // Automatically start searching when the composable enters the composition
+    var showPasswordDialog by remember { mutableStateOf(false) }
+    var showNameDialog by remember { mutableStateOf(false) }
+    var selectedDevice by remember { mutableStateOf(DeviceEntity("", "", "", "")) }
+
     LaunchedEffect(Unit) {
-        searchJob?.cancel() // Cancel any previous search job
+        searchJob?.cancel()
 
         searchJob = fetchDeviceIds(baseUrl) { foundDevice ->
-            devices = devices + foundDevice // Add found devices to the list
+            devices = devices + foundDevice
         }
     }
 
-    // Use a Box to position elements on top of each other
+    if (showPasswordDialog) {
+        PasswordValidatorDialog(
+            deviceIp = selectedDevice.ip,
+            onDismiss = { showPasswordDialog = false },
+            onPasswordSubmit = {
+                showNameDialog = true
+                showPasswordDialog = false
+                selectedDevice = selectedDevice.copy(password = it)
+                searchJob?.cancel()
+            }
+        )
+    }
+
+    if (showNameDialog) {
+        NameChangeDialog(
+            onDismiss = { showNameDialog = false },
+            onNameSubmit = { deviceName ->
+                onDeviceSelected(
+                    selectedDevice.copy(name = deviceName)
+                )
+                showNameDialog = false
+            }
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Column for the list of devices found
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 56.dp)  // Reserve space for the cancel button
+                .padding(bottom = 56.dp)
         ) {
             if (isSearching) {
                 Text("Searching for devices...", modifier = Modifier.padding(bottom = 16.dp))
             }
 
-            // Display the list of found devices
             devices.forEach { (deviceId, index) ->
                 Text(
                     text = "$deviceId ($index)",
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            onDeviceSelected(deviceId, index)
-                            searchJob?.cancel() // Stop searching when a device is selected
+                            showPasswordDialog = true
+                            selectedDevice = selectedDevice.copy(
+                                id = deviceId,
+                                ip = index
+                            )
                         }
                         .padding(8.dp)
                 )
@@ -104,11 +132,10 @@ fun DeviceFinder(
             }
         }
 
-        // Cancel button positioned at the bottom
         Button(
             onClick = {
-                searchJob?.cancel() // Stop the search job
-                onCancel() // Trigger the cancellation logic to close the dialog
+                searchJob?.cancel()
+                onCancel()
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -126,7 +153,6 @@ fun fetchDeviceIds(baseUrl: String, onDeviceFound: (Pair<String, String>) -> Uni
         .build()
 
     return CoroutineScope(Dispatchers.IO).launch {
-        // Iterate over the last two octets of the IP address
         val requests = (0..255).flatMap { lastOctet1 ->
             (0..255).map { lastOctet2 ->
                 async {
@@ -136,17 +162,23 @@ fun fetchDeviceIds(baseUrl: String, onDeviceFound: (Pair<String, String>) -> Uni
                         client.newCall(request).execute().use { response: Response ->
                             if (response.isSuccessful) {
                                 response.body?.string()?.let { deviceId ->
-                                    // Notify of the found device
                                     synchronized(this) {
-                                        onDeviceFound(Pair(deviceId, "${baseUrl}$lastOctet1.$lastOctet2")) // Store device ID with last two octets
+                                        onDeviceFound(
+                                            Pair(
+                                                deviceId,
+                                                "${baseUrl}$lastOctet1.$lastOctet2"
+                                            )
+                                        )
                                     }
                                 }
                             } else {
-                                Log.e("DeviceFinder", "Request failed for $url: ${response.message}")
+                                Log.e(
+                                    "DeviceFinder",
+                                    "Request failed for $url: ${response.message}"
+                                )
                             }
                         }
-                    } catch (e: IOException) {
-                        Log.e("DeviceFinder", "fetchDeviceIds: Error fetching $url - ${e.message}")
+                    } catch (_: IOException) {
                     }
                 }
             }
@@ -168,8 +200,9 @@ fun getLocalIpAddressBase(): String {
                 val inetAddress = inetAddresses.nextElement()
                 if (!inetAddress.isLoopbackAddress) {
                     // Get the first three octets of the IP address for base URL
-                    val ip = inetAddress.hostAddress?.split(".")
-                    return "${ip?.get(0)}.${ip?.get(1)}."
+                    val ip = inetAddress.hostAddress?.split(".") ?: return "192.168."
+                    if (ip.size < 4) return "192.168."
+                    return "${ip[0]}.${ip[1]}."
                 }
             }
         }

@@ -7,5 +7,6 @@ import androidx.room.PrimaryKey
 data class DeviceEntity(
     @PrimaryKey val id: String,
     val ip: String,
-    val name: String
+    val name: String,
+    val password: String
 )
