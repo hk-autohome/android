@@ -1,31 +1,21 @@
-package com.harshkanjariya.autohome
+package com.harshkanjariya.autohome.ui.screens
 
 import android.content.Context
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.harshkanjariya.autohome.db.AppDatabase
 import com.harshkanjariya.autohome.db.entity.ButtonEntity
 import com.harshkanjariya.autohome.db.entity.DeviceEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.IOException
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import com.google.accompanist.swiperefresh.SwipeRefresh
@@ -60,6 +50,7 @@ fun DevicesHome(context: Context, navigate: (String) -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+//                    .clickable { mqtt.sendMessage("This is msg") }
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {

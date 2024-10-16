@@ -1,7 +1,6 @@
 package com.harshkanjariya.autohome.api
 
 import android.util.Log
-import com.pluto.Pluto
 import com.pluto.plugins.network.okhttp.PlutoOkhttpInterceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -61,7 +60,7 @@ fun checkDeviceStatus(deviceIp: String, deviceId: String, onError: (String) -> U
     }
 }
 
-suspend fun verifyPassword(deviceIp: String, password: String, onError: (String) -> Unit): Boolean {
+fun verifyPassword(deviceIp: String, password: String, onError: (String) -> Unit): Boolean {
     val url = "http://$deviceIp/validate_password?device_password=$password"
     val client = OkHttpClient.Builder()
         .addInterceptor(PlutoOkhttpInterceptor)
@@ -96,4 +95,8 @@ suspend fun verifyPassword(deviceIp: String, password: String, onError: (String)
         onError("Unexpected error: ${e.message}")
         false
     }
+}
+
+fun getEspDeviceId(gatewayIp: String): String? {
+    return Api.getInstance().getRaw("http://$gatewayIp/device_id")
 }

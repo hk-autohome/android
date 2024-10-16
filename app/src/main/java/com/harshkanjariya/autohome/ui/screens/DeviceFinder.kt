@@ -1,4 +1,4 @@
-package com.harshkanjariya.autohome
+package com.harshkanjariya.autohome.ui.screens
 
 import android.content.Context
 import android.util.Log
@@ -199,7 +199,6 @@ fun getLocalIpAddressBase(): String {
             while (inetAddresses.hasMoreElements()) {
                 val inetAddress = inetAddresses.nextElement()
                 if (!inetAddress.isLoopbackAddress) {
-                    // Get the first three octets of the IP address for base URL
                     val ip = inetAddress.hostAddress?.split(".") ?: return "192.168."
                     if (ip.size < 4) return "192.168."
                     return "${ip[0]}.${ip[1]}."
@@ -209,7 +208,7 @@ fun getLocalIpAddressBase(): String {
     } catch (e: Exception) {
         Log.e("DeviceFinder", "Error getting local IP address: ${e.message}")
     }
-    return "192.168." // Default fallback if IP address cannot be found
+    return "192.168."
 }
 
 fun addDeviceToDatabase(device: DeviceEntity, context: Context) {

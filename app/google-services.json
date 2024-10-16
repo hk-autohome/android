@@ -1,0 +1,38 @@
+{
+  "project_info": {
+    "project_number": "162592013638",
+    "project_id": "autohome-hk",
+    "storage_bucket": "autohome-hk.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:162592013638:android:29de0c3a9e013d52397947",
+        "android_client_info": {
+          "package_name": "com.harshkanjariya.autohome"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "162592013638-l8qnvvd0btmthd7seccpj32ur19f8tv7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.harshkanjariya.autohome",
+            "certificate_hash": "f39293d5824b5a358890bda67bcf9131b2bd0069"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfmmbO2NyL5kouwM0mEala68Grgr2-u-w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

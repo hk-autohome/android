@@ -1,7 +1,9 @@
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
-    kotlin("kapt") // Add this line to apply the KAPT plugin
+    kotlin("kapt")
+    id("com.google.gms.google-services")
+    id("dagger.hilt.android.plugin")
 }
 
 android {
@@ -22,7 +24,18 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "API_BASE_URL", "\"http://192.168.1.8:3000\"")
+            buildConfigField("String", "MQTT_URL", "\"ssl://5b960086f3b74b0d965b7532908b1914.s1.eu.hivemq.cloud:8883\"")
+            buildConfigField("String", "MQTT_USERNAME", "\"hivemq.webclient.1728037900518\"")
+            buildConfigField("String", "MQTT_PASSWORD", "\"hBH0Kar@b>;9x21Zg:AR\"")
+        }
         release {
+            buildConfigField("String", "API_BASE_URL", "\"https://api.auto-home.in\"")
+            buildConfigField("String", "MQTT_URL", "\"ssl://5b960086f3b74b0d965b7532908b1914.s1.eu.hivemq.cloud:8883\"")
+            buildConfigField("String", "MQTT_USERNAME", "\"hivemq.webclient.1728037900518\"")
+            buildConfigField("String", "MQTT_PASSWORD", "\"hBH0Kar@b>;9x21Zg:AR\"")
+
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -39,13 +52,14 @@ android {
     }
     buildFeatures {
         compose = true
+        viewBinding = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
     }
     packaging {
         resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/{AL2.0,LGPL2.1,INDEX.LIST,io.netty.versions.properties}"
         }
     }
 }
@@ -61,6 +75,14 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.firebase.messaging)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+    implementation(libs.androidx.annotation)
+    implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.googleid)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -68,6 +90,19 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+
+    // Dagger Hilt dependencies
+    implementation("com.google.dagger:hilt-android:2.51.1")
+    kapt("com.google.dagger:hilt-compiler:2.51.1")
+
+    //Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+
 
     debugImplementation("com.plutolib:pluto:$plutoVersion")
     debugImplementation("com.plutolib.plugins:network:$plutoVersion")
@@ -81,6 +116,11 @@ dependencies {
     implementation("javax.jmdns:jmdns:3.4.1")
     implementation("com.google.accompanist:accompanist-flowlayout:0.30.0")
     implementation(libs.androidx.room.runtime)
-    kapt(libs.androidx.room.compiler) // Room compiler
+    kapt(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
+    implementation("androidx.legacy:legacy-support-v4:1.0.0")
+    implementation("com.github.hannesa2:paho.mqtt.android:4.2.4")
+    implementation("org.eclipse.paho:org.eclipse.paho.android.service:1.1.1")
+    implementation("com.google.android.gms:play-services-auth:20.2.0")
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
 }
