@@ -18,7 +18,7 @@ import com.harshkanjariya.autohome.ui.theme.AutoHomeTheme
 import kotlinx.coroutines.launch
 
 @Composable
-fun MainScreen() {
+fun MainScreen(gatewayIp: String) {
     val context = LocalContext.current
 
     AutoHomeTheme {
@@ -57,7 +57,7 @@ fun MainScreen() {
                         DeviceDetailScreen(deviceId!!, context = context)
                     }
                     composable("new_device") {
-                        SetupNewDevice()
+                        SetupNewDevice(gatewayIp)
                     }
                 }
             }

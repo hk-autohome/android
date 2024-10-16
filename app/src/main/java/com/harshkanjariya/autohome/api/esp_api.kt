@@ -1,9 +1,12 @@
 package com.harshkanjariya.autohome.api
 
 import android.util.Log
+import com.harshkanjariya.autohome.api.dto.EspDeviceIdDto
+import com.harshkanjariya.autohome.api.dto.getResponseType
 import com.pluto.plugins.network.okhttp.PlutoOkhttpInterceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -97,6 +100,44 @@ fun verifyPassword(deviceIp: String, password: String, onError: (String) -> Unit
     }
 }
 
-fun getEspDeviceId(gatewayIp: String): String? {
-    return Api.getInstance().getRaw("http://$gatewayIp/device_id")
+fun getEspDeviceId(gatewayIp: String): String {
+    val responseType = getResponseType<EspDeviceIdDto>()
+    val response = Api.getInstance().getSync<EspDeviceIdDto>("http://$gatewayIp/device_id", responseType)
+        ?: throw Exception("Invalid response")
+
+    // Check if the response length is 24
+    if (response.deviceId.length != 24) {
+        throw Exception("Invalid response")
+    }
+
+    // Validate if the response is a hexadecimal string
+    if (!response.deviceId.matches(Regex("^[0-9a-fA-F]+$"))) {
+        throw Exception("Response is not a valid hexadecimal string")
+    }
+
+    return response.deviceId
+}
+
+fun getDeviceSsidList(gatewayIp: String): List<String> {
+    val responseType = getResponseType<List<String>>()
+    return Api.getInstance().getSync<List<String>>("http://$gatewayIp/ssids", responseType) ?: listOf()
+}
+
+fun updateEspWifiConfig(gatewayIp: String, ssid: String, password: String, onComplete: () -> Unit) {
+    Api.getInstance().post(
+        "http://$gatewayIp/wifi_config",
+        """
+            {
+                "ssid": "$ssid",
+                "password": "$password"
+            }
+        """.trimIndent(),
+        callback = object: Api.ApiResponseCallback {
+            override fun onSuccess(response: Response) {
+                onComplete()
+            }
+            override fun onFailure(e: IOException) {
+            }
+        }
+    )
 }

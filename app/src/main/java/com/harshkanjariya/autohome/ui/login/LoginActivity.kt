@@ -5,26 +5,26 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.harshkanjariya.autohome.MainActivity
 import com.harshkanjariya.autohome.R
 import com.harshkanjariya.autohome.api.getAuthToken
@@ -36,7 +36,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-
 @AndroidEntryPoint
 class LoginActivity : ComponentActivity() {
 
@@ -44,18 +43,26 @@ class LoginActivity : ComponentActivity() {
         const val TAG = "LoginActivity"
     }
 
-    private lateinit var googleSignInClient: GoogleSignInClient
-
     @Inject
     lateinit var dataStore: DataStore<Preferences>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        getCredentials(authorizedAccounts = true)
+
+        setContent {
+            AutoHomeTheme {
+                LoginScreen()
+            }
+        }
+    }
+
+    private fun getCredentials(authorizedAccounts: Boolean) {
         val clientId = getString(R.string.oauth_client_id)
 
         val googleIdOption: GetGoogleIdOption = GetGoogleIdOption.Builder()
-            .setFilterByAuthorizedAccounts(true)
+            .setFilterByAuthorizedAccounts(authorizedAccounts)
             .setServerClientId(clientId)
             .setNonce("google_sign_in")
             .build()
@@ -69,64 +76,43 @@ class LoginActivity : ComponentActivity() {
                     request = request,
                     context = this@LoginActivity,
                 )
-                Log.e(TAG, "onCreate: $result")
+                handleSignIn(result)
             } catch (e: GetCredentialException) {
-                Log.e(TAG, "onCreate: $e")
-            }
-        }
-
-//        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-//            .requestEmail()
-//            .requestIdToken(clientId)
-//            .build()
-//
-//        googleSignInClient = GoogleSignIn.getClient(this, gso)
-
-        setContent {
-            AutoHomeTheme {
-                LoginScreen()
+                Log.e(TAG, "Credential error: ${e.localizedMessage}")
+                e.cause?.let { cause ->
+                    Log.e(TAG, "Cause of error: ${cause.localizedMessage}")
+                }
+                // If fetching credentials fails, allow manual sign-in
+                runOnUiThread {
+                    showSignInButton()
+                }
             }
         }
     }
 
-    private fun signInWithGoogle() {
-        val signInIntent = googleSignInClient.signInIntent
-        resultLauncher.launch(signInIntent)
-    }
-
-    private val resultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        Log.e("asdf", "ResultCode: ${result.resultCode}, Intent: ${result.data}")
-        val intentData = result.data?.extras?.keySet()?.joinToString(", ") { key ->
-            "$key -> ${result.data?.extras?.get(key)}"
-        } ?: "No intent data"
-        Log.e("asdf", "Intent Data: $intentData")
-
-        if (result.resultCode == RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            try {
-                val account = task.getResult(ApiException::class.java)
-                Log.e("TAG", ": google sign in account $account")
-                CoroutineScope(Dispatchers.IO).launch {
-                    getAuthToken()?.let {
-                        if (it.isNotEmpty()) {
-                            saveTokenToDataStore(it) {
+    private fun handleSignIn(result: GetCredentialResponse) {
+        when (val credential = result.credential) {
+            is CustomCredential -> {
+                if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                    try {
+                        val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                        // Call getAuthToken with the idToken
+                        val idToken = googleIdTokenCredential.idToken
+                        getAuthToken(idToken)?.let { token ->
+                            saveTokenToDataStore(token) {
                                 startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                                 finish()
                             }
                         }
+                    } catch (e: GoogleIdTokenParsingException) {
+                        Log.e(TAG, "Received an invalid google id token response", e)
                     }
+                } else {
+                    Log.e(TAG, "Unexpected type of credential")
                 }
-            } catch (e: ApiException) {
-                Log.w("LoginActivity", "Google sign in failed", e)
             }
-        } else {
-            try {
-                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                val account = task.getResult(ApiException::class.java)
-                Log.e("TAG", ": google sign in account $account")
-            } catch (e: ApiException) {
-                Log.e("LoginActivity", "SignIn Result: Failed. Status: ${e.statusCode}")
-                e.printStackTrace()
+            else -> {
+                Log.e(TAG, "Unexpected type of credential")
             }
         }
     }
@@ -149,8 +135,19 @@ class LoginActivity : ComponentActivity() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Button(onClick = { signInWithGoogle() }) {
+            Button(onClick = {
+                getCredentials(authorizedAccounts = false)
+            }) {
                 Text(stringResource(R.string.sign_in_with_google))
+            }
+        }
+    }
+
+    private fun showSignInButton() {
+        // Logic to display the sign-in button if fetching credentials fails
+        setContent {
+            AutoHomeTheme {
+                LoginScreen() // You can add logic to indicate an error or failure here
             }
         }
     }

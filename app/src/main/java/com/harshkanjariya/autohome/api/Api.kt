@@ -1,10 +1,10 @@
 package com.harshkanjariya.autohome.api
 
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.google.gson.Gson
 import com.harshkanjariya.autohome.BuildConfig
-import com.harshkanjariya.autohome.api.dto.ApiResponseDto
 import com.harshkanjariya.autohome.utils.DataStoreKeys
 import com.pluto.plugins.network.okhttp.PlutoOkhttpInterceptor
 import kotlinx.coroutines.CoroutineScope
@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import okhttp3.*
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
@@ -20,15 +21,10 @@ import javax.inject.Singleton
 
 @Singleton
 class Api private constructor() {
-    private lateinit var jwtToken: String
+    private var jwtToken: String? = null
+
     private val client: OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(PlutoOkhttpInterceptor)
-        .addInterceptor { chain ->
-            val request = chain.request().newBuilder()
-                .addHeader("Authorization", "Bearer $jwtToken")
-                .build()
-            chain.proceed(request)
-        }
         .build()
 
     companion object {
@@ -44,7 +40,7 @@ class Api private constructor() {
                     dataStore.data.map { preferences ->
                         preferences[DataStoreKeys.TOKEN] ?: ""
                     }.collect { token ->
-                        instance?.jwtToken = token
+                        instance?.jwtToken = if (token.isNotEmpty()) token else null
                     }
                 }
             }
@@ -55,15 +51,29 @@ class Api private constructor() {
         }
     }
 
+    // Helper function to append BASE_URL if the endpoint does not have a scheme or hostname
+    private fun buildUrl(endpoint: String): String {
+        return if (endpoint.toHttpUrlOrNull() == null) {
+            // If the endpoint is a relative URL (no scheme), append BASE_URL
+            BASE_URL + endpoint
+        } else {
+            // Endpoint is already a complete URL
+            endpoint
+        }
+    }
 
-    fun get(endpoint: String, callback: ApiResponseCallback) {
-        val request = Request.Builder()
-            .url(BASE_URL + endpoint)
-            .addHeader("Authorization", "Bearer $jwtToken")
+    // GET Request with optional token
+    fun get(endpoint: String, callback: ApiResponseCallback, token: Boolean = true) {
+        val requestBuilder = Request.Builder()
+            .url(buildUrl(endpoint))
             .get()
-            .build()
 
-        client.newCall(request).enqueue(object : Callback {
+        // Add the token header if provided
+        if (token) {
+            requestBuilder.addHeader("Authorization", "Bearer $jwtToken")
+        }
+
+        client.newCall(requestBuilder.build()).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 callback.onFailure(e)
             }
@@ -74,78 +84,18 @@ class Api private constructor() {
         })
     }
 
-    // POST Request
-    fun post(endpoint: String, jsonBody: String, callback: ApiResponseCallback? = null) {
-        val body = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+    fun <T> getSync(endpoint: String, responseType: Type, queryData: Map<String, String> = mapOf()): T? {
+        val baseUrl = (buildUrl(endpoint)).toHttpUrlOrNull() ?: throw IllegalArgumentException("Invalid URL")
+
+        val urlBuilder = baseUrl.newBuilder()
+            .apply {
+                queryData.forEach { (key, value) ->
+                    addQueryParameter(key, value)
+                }
+            }
+
         val request = Request.Builder()
-            .url(BASE_URL + endpoint)
-            .addHeader("Authorization", "Bearer $jwtToken")
-            .post(body)
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                callback?.onFailure(e)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                callback?.onSuccess(response)
-            }
-        })
-    }
-
-    // PUT Request
-    fun put(endpoint: String, jsonBody: String, callback: ApiResponseCallback) {
-        val body = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
-        val request = Request.Builder()
-            .url(BASE_URL + endpoint)
-            .put(body)
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                callback.onFailure(e)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                callback.onSuccess(response)
-            }
-        })
-    }
-
-    // DELETE Request
-    fun delete(endpoint: String, callback: ApiResponseCallback) {
-        val request = Request.Builder()
-            .url(BASE_URL + endpoint)
-            .delete()
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                callback.onFailure(e)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                callback.onSuccess(response)
-            }
-        })
-    }
-
-
-    fun getRaw(endpoint: String): String? {
-        val request = Request.Builder()
-            .url(BASE_URL + endpoint)
-            .get()
-            .build()
-
-        val response = client.newCall(request).execute()
-
-        return response.body?.string()
-    }
-
-    fun <T> getSync(endpoint: String, responseType: Type): ApiResponseDto<T>? {
-        val request = Request.Builder()
-            .url(BASE_URL + endpoint)
+            .url(urlBuilder.build()) // Use the built URL
             .get()
             .build()
 
@@ -156,9 +106,81 @@ class Api private constructor() {
 
         // Deserialize using Gson
         return stringResponse?.let {
-            Gson().fromJson(it, responseType)
+            Log.e("TAG", "getSync: $it")
+            val tmp = Gson().fromJson<T>(it, responseType)
+            Log.e("TAG", "getSync: $tmp")
+            tmp
         }
     }
+
+    // POST Request with optional token
+    fun post(endpoint: String, jsonBody: String, callback: ApiResponseCallback? = null, token: Boolean = true) {
+        val body = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+        val requestBuilder = Request.Builder()
+            .url(buildUrl(endpoint))
+            .post(body)
+
+        // Add the token header if provided
+        if (token) {
+            requestBuilder.addHeader("Authorization", "Bearer $jwtToken")
+        }
+
+        client.newCall(requestBuilder.build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                callback?.onFailure(e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                callback?.onSuccess(response)
+            }
+        })
+    }
+
+    // PUT Request with optional token
+    fun put(endpoint: String, jsonBody: String, callback: ApiResponseCallback, token: Boolean = true) {
+        val body = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+        val requestBuilder = Request.Builder()
+            .url(buildUrl(endpoint))
+            .put(body)
+
+        // Add the token header if provided
+        if (token) {
+            requestBuilder.addHeader("Authorization", "Bearer $jwtToken")
+        }
+
+        client.newCall(requestBuilder.build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                callback.onFailure(e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                callback.onSuccess(response)
+            }
+        })
+    }
+
+    // DELETE Request with optional token
+    fun delete(endpoint: String, callback: ApiResponseCallback, token: Boolean = true) {
+        val requestBuilder = Request.Builder()
+            .url(buildUrl(endpoint))
+            .delete()
+
+        // Add the token header if provided
+        if (token) {
+            requestBuilder.addHeader("Authorization", "Bearer $jwtToken")
+        }
+
+        client.newCall(requestBuilder.build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                callback.onFailure(e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                callback.onSuccess(response)
+            }
+        })
+    }
+
     interface ApiResponseCallback {
         fun onSuccess(response: Response)
         fun onFailure(e: IOException)

@@ -14,12 +14,16 @@
       },
       "oauth_client": [
         {
-          "client_id": "162592013638-l8qnvvd0btmthd7seccpj32ur19f8tv7.apps.googleusercontent.com",
+          "client_id": "162592013638-c8jamqtsgrjsc6hbmjeptmj1tc0g1d13.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.harshkanjariya.autohome",
-            "certificate_hash": "f39293d5824b5a358890bda67bcf9131b2bd0069"
+            "certificate_hash": "1b48aa1ae53cf020b30f404aab2430eb278e98db"
           }
+        },
+        {
+          "client_id": "162592013638-66r80n116e4ns38gul9l7ct1k3rpc6ne.apps.googleusercontent.com",
+          "client_type": 3
         }
       ],
       "api_key": [
@@ -29,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "162592013638-66r80n116e4ns38gul9l7ct1k3rpc6ne.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

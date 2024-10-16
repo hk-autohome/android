@@ -10,5 +10,5 @@
     <string name="invalid_password">Password must be >5 characters</string>
     <string name="login_failed">"Login failed"</string>
     <string name="sign_in_with_google">SignIn with Google</string>
-    <string name="oauth_client_id">162592013638-l8qnvvd0btmthd7seccpj32ur19f8tv7.apps.googleusercontent.com</string>
+    <string name="oauth_client_id">162592013638-66r80n116e4ns38gul9l7ct1k3rpc6ne.apps.googleusercontent.com</string>
 </resources>

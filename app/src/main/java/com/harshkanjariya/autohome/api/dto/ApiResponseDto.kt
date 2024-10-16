@@ -9,5 +9,5 @@ data class ApiResponseDto<T>(
 )
 
 inline fun <reified T> getResponseType(): Type {
-    return object : TypeToken<ApiResponseDto<T>>() {}.type
+    return object : TypeToken<T>() {}.type
 }
