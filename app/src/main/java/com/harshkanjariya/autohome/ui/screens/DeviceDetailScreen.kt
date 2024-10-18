@@ -47,6 +47,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.material3.FloatingActionButton
+import com.harshkanjariya.autohome.api.repositories.DeviceRepository
 
 @Composable
 fun DeviceDetailScreen(deviceId: String, context: Context) {
@@ -65,9 +66,9 @@ fun DeviceDetailScreen(deviceId: String, context: Context) {
     LaunchedEffect(deviceId) {
         coroutineScope.launch(Dispatchers.IO) {
             device = db.deviceDao().getDeviceById(deviceId)
-            buttons = getButtonsForDevice(deviceId, context) + defaultLEDButton
+            buttons = DeviceRepository.getButtonsForDevice(deviceId, context) + defaultLEDButton
             device?.let {
-                deviceStatus = checkDeviceStatus(it.ip, it.id) {
+                deviceStatus = checkDeviceStatus(it.localIp, it.deviceId) {
                     errorMessage = it
                 }
             }
@@ -96,7 +97,7 @@ fun DeviceDetailScreen(deviceId: String, context: Context) {
         }
         if (showNameDialog && device != null) {
             NameChangeDialog(onDismiss = { showNameDialog = false }) {
-                updateDeviceName(context, it, device?.id ?: "")
+                updateDeviceName(context, it, device?.deviceId ?: "")
             }
         }
 
@@ -107,8 +108,8 @@ fun DeviceDetailScreen(deviceId: String, context: Context) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(text = "id: ${it.id}", style = MaterialTheme.typography.bodyLarge)
-                    Text(text = "ip: ${it.ip}", style = MaterialTheme.typography.bodyLarge)
+                    Text(text = "id: ${it.deviceId}", style = MaterialTheme.typography.bodyLarge)
+                    Text(text = "ip: ${it.localIp}", style = MaterialTheme.typography.bodyLarge)
                 }
             }
 
@@ -121,7 +122,7 @@ fun DeviceDetailScreen(deviceId: String, context: Context) {
 
                     Button(onClick = {
                         coroutineScope.launch(Dispatchers.IO) {
-                            triggerSwitch(it.ip, button.buttonNumber, it.password, {
+                            triggerSwitch(it.localIp, button.buttonNumber, it.password, {
                                 Log.d("TAG", "Button Pressed: $button")
                             }) {
                                 errorMessage = it
@@ -149,8 +150,8 @@ fun DeviceDetailScreen(deviceId: String, context: Context) {
                     onDismiss = { showAddDialog = false },
                     onAddButton = { newButton, name ->
                         coroutineScope.launch(Dispatchers.IO) {
-                            addButtonForDevice(it.id, newButton, name, context)
-                            buttons = getButtonsForDevice(it.id, context) + defaultLEDButton
+                            DeviceRepository.addButtonForDevice(it.deviceId, newButton, name, context)
+                            buttons = DeviceRepository.getButtonsForDevice(it.deviceId, context) + defaultLEDButton
                             showAddDialog = false
                         }
                     }
@@ -166,8 +167,8 @@ fun DeviceDetailScreen(deviceId: String, context: Context) {
                         TextButton(onClick = {
                             buttonToDelete?.let { button ->
                                 coroutineScope.launch(Dispatchers.IO) {
-                                    removeButton(context, it.id, button.buttonNumber)
-                                    buttons = getButtonsForDevice(it.id, context) + defaultLEDButton
+                                    removeButton(context, it.deviceId, button.buttonNumber)
+                                    buttons = DeviceRepository.getButtonsForDevice(it.deviceId, context) + defaultLEDButton
                                     showConfirmDialog = false
                                 }
                             }

@@ -15,9 +15,9 @@ interface DeviceDao {
     @Query("SELECT * FROM devices")
     fun getDevices(): List<DeviceEntity>
 
-    @Query("SELECT * FROM devices where id = :id")
+    @Query("SELECT * FROM devices where deviceId = :id")
     fun getDeviceById(id: String): DeviceEntity
 
-    @Query("UPDATE devices set name = :name where id = :id")
+    @Query("UPDATE devices set name = :name where deviceId = :id")
     fun updateName(name: String, id: String)
 }

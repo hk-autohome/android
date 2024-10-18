@@ -63,9 +63,18 @@ class Api private constructor() {
     }
 
     // GET Request with optional token
-    fun get(endpoint: String, callback: ApiResponseCallback, token: Boolean = true) {
+    fun get(endpoint: String, queryData: Map<String, String>, callback: ApiResponseCallback, token: Boolean = true) {
+        val baseUrl = (buildUrl(endpoint)).toHttpUrlOrNull() ?: throw IllegalArgumentException("Invalid URL")
+
+        val urlBuilder = baseUrl.newBuilder()
+            .apply {
+                queryData.forEach { (key, value) ->
+                    addQueryParameter(key, value)
+                }
+            }
+
         val requestBuilder = Request.Builder()
-            .url(buildUrl(endpoint))
+            .url(urlBuilder.build())
             .get()
 
         // Add the token header if provided
@@ -84,7 +93,7 @@ class Api private constructor() {
         })
     }
 
-    fun <T> getSync(endpoint: String, responseType: Type, queryData: Map<String, String> = mapOf()): T? {
+    fun <T> getSync(endpoint: String, responseType: Type, queryData: Map<String, String> = mapOf(), token: Boolean = false): T? {
         val baseUrl = (buildUrl(endpoint)).toHttpUrlOrNull() ?: throw IllegalArgumentException("Invalid URL")
 
         val urlBuilder = baseUrl.newBuilder()
@@ -94,22 +103,22 @@ class Api private constructor() {
                 }
             }
 
-        val request = Request.Builder()
-            .url(urlBuilder.build()) // Use the built URL
+        val requestBuilder = Request.Builder()
+            .url(urlBuilder.build())
             .get()
-            .build()
 
-        val response = client.newCall(request).execute()
+        if (token) {
+            requestBuilder.addHeader("Authorization", "Bearer $jwtToken")
+        }
+
+        val response = client.newCall(requestBuilder.build()).execute()
 
         // Convert the response body to string
         val stringResponse = response.body?.string()
 
         // Deserialize using Gson
         return stringResponse?.let {
-            Log.e("TAG", "getSync: $it")
-            val tmp = Gson().fromJson<T>(it, responseType)
-            Log.e("TAG", "getSync: $tmp")
-            tmp
+            Gson().fromJson<T>(it, responseType)
         }
     }
 

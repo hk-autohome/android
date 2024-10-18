@@ -14,11 +14,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.harshkanjariya.autohome.ui.components.MainDrawer
+import com.harshkanjariya.autohome.ui.main.MainContract
 import com.harshkanjariya.autohome.ui.theme.AutoHomeTheme
 import kotlinx.coroutines.launch
 
 @Composable
-fun MainScreen(gatewayIp: String) {
+fun MainScreen(state: MainContract.State, onLogout: () -> Unit, openFindDeviceActivity: () -> Unit) {
     val context = LocalContext.current
 
     AutoHomeTheme {
@@ -33,6 +34,7 @@ fun MainScreen(gatewayIp: String) {
                 MainDrawer(
                     navController = navController,
                     currentRoute = navController.currentDestination?.route ?: "",
+                    onLogout = onLogout,
                     closeDrawer = {
                         coroutineScope.launch {
                             drawerState.close()
@@ -48,8 +50,8 @@ fun MainScreen(gatewayIp: String) {
                     modifier = Modifier.padding(it)
                 ) {
                     composable("devicesList") {
-                        DevicesHome(context) {
-                            navController.navigate("deviceDetails/$it")
+                        DevicesHome(context, openFindDeviceActivity) { deviceId ->
+                            navController.navigate("deviceDetails/$deviceId")
                         }
                     }
                     composable("deviceDetails/{deviceId}") { backStackEntry ->
@@ -57,7 +59,7 @@ fun MainScreen(gatewayIp: String) {
                         DeviceDetailScreen(deviceId!!, context = context)
                     }
                     composable("new_device") {
-                        SetupNewDevice(gatewayIp)
+                        SetupNewDevice(state.gatewayIp)
                     }
                 }
             }

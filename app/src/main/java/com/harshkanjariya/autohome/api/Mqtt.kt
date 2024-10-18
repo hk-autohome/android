@@ -10,7 +10,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.harshkanjariya.autohome.BuildConfig
-import com.harshkanjariya.autohome.MainActivity
+import com.harshkanjariya.autohome.ui.main.MainActivity
 import com.harshkanjariya.autohome.R
 import info.mqtt.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.IMqttActionListener

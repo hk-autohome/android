@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -25,7 +24,7 @@ import androidx.datastore.preferences.core.edit
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
-import com.harshkanjariya.autohome.MainActivity
+import com.harshkanjariya.autohome.ui.main.MainActivity
 import com.harshkanjariya.autohome.R
 import com.harshkanjariya.autohome.api.getAuthToken
 import com.harshkanjariya.autohome.ui.theme.AutoHomeTheme

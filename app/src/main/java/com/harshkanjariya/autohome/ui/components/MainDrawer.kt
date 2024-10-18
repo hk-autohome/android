@@ -17,7 +17,7 @@ import androidx.navigation.NavController
 import com.harshkanjariya.autohome.R
 
 @Composable
-fun MainDrawer(navController: NavController, currentRoute: String, closeDrawer: () -> Unit) {
+fun MainDrawer(navController: NavController, currentRoute: String, onLogout: () -> Unit, closeDrawer: () -> Unit) {
     val drawerItems = listOf(
         NavigationItem(
             title = "Home",
@@ -57,6 +57,22 @@ fun MainDrawer(navController: NavController, currentRoute: String, closeDrawer: 
                 shape = MaterialTheme.shapes.small,
             )
         }
+
+        Divider()  // Optional: Add a divider before the logout item
+
+        // Logout Item
+        NavigationDrawerItem(
+            label = { Text(text = "Logout") },
+            selected = false,
+            onClick = { onLogout() },
+            icon = {
+                Icon(
+                    imageVector = ImageVector.vectorResource(id = R.drawable.baseline_logout_24), // Replace with your logout icon
+                    contentDescription = null
+                )
+            },
+            shape = MaterialTheme.shapes.small,
+        )
     }
 }
 

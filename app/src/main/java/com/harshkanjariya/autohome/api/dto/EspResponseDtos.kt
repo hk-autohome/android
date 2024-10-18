@@ -1,5 +1,8 @@
 package com.harshkanjariya.autohome.api.dto
 
-data class EspDeviceIdDto(
-    val deviceId: String
+data class EspDeviceInfoDto(
+    val deviceId: String,
+    val version: Int,
+    val isRegistered: Boolean,
+    val pinCode: String,
 )

@@ -1,7 +1,7 @@
 package com.harshkanjariya.autohome.api
 
 import android.util.Log
-import com.harshkanjariya.autohome.api.dto.EspDeviceIdDto
+import com.harshkanjariya.autohome.api.dto.EspDeviceInfoDto
 import com.harshkanjariya.autohome.api.dto.getResponseType
 import com.pluto.plugins.network.okhttp.PlutoOkhttpInterceptor
 import okhttp3.OkHttpClient
@@ -37,7 +37,7 @@ fun triggerSwitch(deviceIp: String, pin: Int, password: String, onComplete: (Str
 }
 
 fun checkDeviceStatus(deviceIp: String, deviceId: String, onError: (String) -> Unit): Boolean {
-    val url = "http://$deviceIp/device_id"
+    val url = "http://$deviceIp/device_info"
     val client = OkHttpClient()
 
     val request = Request.Builder()
@@ -52,7 +52,7 @@ fun checkDeviceStatus(deviceIp: String, deviceId: String, onError: (String) -> U
             }
             val body = response.body?.string() ?: ""
             onError("")
-            body == deviceId // Return true if the ID matches
+            body == deviceId
         }
     } catch (e: IOException) {
         onError("Network error: ${e.message}")
@@ -100,9 +100,9 @@ fun verifyPassword(deviceIp: String, password: String, onError: (String) -> Unit
     }
 }
 
-fun getEspDeviceId(gatewayIp: String): String {
-    val responseType = getResponseType<EspDeviceIdDto>()
-    val response = Api.getInstance().getSync<EspDeviceIdDto>("http://$gatewayIp/device_id", responseType)
+fun getEspDeviceInfo(gatewayIp: String): EspDeviceInfoDto {
+    val responseType = getResponseType<EspDeviceInfoDto>()
+    val response = Api.getInstance().getSync<EspDeviceInfoDto>("http://$gatewayIp/device_info", responseType)
         ?: throw Exception("Invalid response")
 
     // Check if the response length is 24
@@ -115,7 +115,7 @@ fun getEspDeviceId(gatewayIp: String): String {
         throw Exception("Response is not a valid hexadecimal string")
     }
 
-    return response.deviceId
+    return response
 }
 
 fun getDeviceSsidList(gatewayIp: String): List<String> {
@@ -123,15 +123,21 @@ fun getDeviceSsidList(gatewayIp: String): List<String> {
     return Api.getInstance().getSync<List<String>>("http://$gatewayIp/ssids", responseType) ?: listOf()
 }
 
-fun updateEspWifiConfig(gatewayIp: String, ssid: String, password: String, onComplete: () -> Unit) {
+fun updateEspWifiConfig(gatewayIp: String, ssid: String, password: String, devicePassword: String, onComplete: () -> Unit) {
+    val payload = mutableMapOf(
+        "ssid" to ssid,
+        "password" to password
+    )
+
+    if (devicePassword.isNotEmpty()) {
+        payload["device_password"] = devicePassword
+    }
+
+    val jsonPayload = payload.map { "\"${it.key}\": \"${it.value}\"" }.joinToString(prefix = "{", postfix = "}")
+
     Api.getInstance().post(
         "http://$gatewayIp/wifi_config",
-        """
-            {
-                "ssid": "$ssid",
-                "password": "$password"
-            }
-        """.trimIndent(),
+        jsonPayload,
         callback = object: Api.ApiResponseCallback {
             override fun onSuccess(response: Response) {
                 onComplete()

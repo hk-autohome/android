@@ -6,33 +6,41 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.harshkanjariya.autohome.db.AppDatabase
 import com.harshkanjariya.autohome.db.entity.ButtonEntity
 import com.harshkanjariya.autohome.db.entity.DeviceEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.harshkanjariya.autohome.api.checkDeviceStatus
+import com.harshkanjariya.autohome.api.getEspDeviceInfo
+import com.harshkanjariya.autohome.api.repositories.DeviceRepository
+
+const val LIMIT = 10
 
 @Composable
-fun DevicesHome(context: Context, navigate: (String) -> Unit) {
-    val db = remember { AppDatabase.getDatabase(context) }
+fun DevicesHome(context: Context, openFindDeviceActivity: () -> Unit, navigate: (String) -> Unit) {
     var devices by remember { mutableStateOf(listOf<DeviceEntity>()) }
     var refreshing by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-    var showDeviceFinder by remember { mutableStateOf(false) }
+    var page by remember { mutableStateOf(1) }
+    var isLoading by remember { mutableStateOf(false) }
+    var hasMoreData by remember { mutableStateOf(true) }
 
+    // Load initial devices on launch
     LaunchedEffect(Unit) {
         coroutineScope.launch(Dispatchers.IO) {
-            devices = db.deviceDao().getDevices()
+            DeviceRepository.getDevices(page, LIMIT).let { newDevices ->
+                devices = newDevices
+                hasMoreData = newDevices.size == LIMIT
+                page = if (hasMoreData) 2 else 1
+            }
         }
     }
 
@@ -40,58 +48,66 @@ fun DevicesHome(context: Context, navigate: (String) -> Unit) {
         state = rememberSwipeRefreshState(isRefreshing = refreshing),
         onRefresh = {
             refreshing = true
+            page = 1
             coroutineScope.launch(Dispatchers.IO) {
-                devices = db.deviceDao().getDevices()
-                refreshing = false
+                DeviceRepository.getDevices(page).let { newDevices ->
+                    devices = newDevices
+                    hasMoreData = newDevices.size == LIMIT
+                    page = if (hasMoreData) 2 else 1
+                    refreshing = false
+                }
             }
         }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-//                    .clickable { mqtt.sendMessage("This is msg") }
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
-            ) {
-                Text(text = "Stored Devices", style = MaterialTheme.typography.headlineMedium)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                if (devices.isNotEmpty()) {
-                    devices.forEach { device ->
+            if (devices.isNotEmpty()) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    items(devices.size) { index ->
+                        val device = devices[index]
                         DeviceListItem(device = device, context = context) {
-                            navigate(device.id)
+                            navigate(device.deviceId)
+                        }
+
+                        if (index == devices.size - 1 && hasMoreData && !isLoading) {
+                            isLoading = true
+                            coroutineScope.launch(Dispatchers.IO) {
+                                DeviceRepository.getDevices(page + 1).let { newDevices ->
+                                    if (newDevices.isNotEmpty()) {
+                                        devices = devices + newDevices
+                                        page += 1
+                                    }
+                                    hasMoreData = newDevices.isNotEmpty()
+                                    isLoading = false
+                                }
+                            }
                         }
                     }
-                } else {
-                    Text(text = "No devices found")
+
+                    if (isLoading) {
+                        item {
+                            CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                        }
+                    }
                 }
+            } else {
+                Text(text = "No devices found", modifier = Modifier.align(Alignment.Center))
             }
 
             FloatingActionButton(
-                onClick = { showDeviceFinder = true },
+                onClick = openFindDeviceActivity,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
             ) {
                 Text("+")
             }
-
-            if (showDeviceFinder) {
-                showDeviceFinderDialog(
-                    onDismiss = {
-                        showDeviceFinder = false
-                        coroutineScope.launch(Dispatchers.IO) {
-                            devices = db.deviceDao().getDevices()
-                        }
-                    },
-                    context = context
-                )
-            }
         }
     }
 }
-
 
 @Composable
 fun DeviceListItem(device: DeviceEntity, context: Context, onClick: () -> Unit) {
@@ -99,10 +115,15 @@ fun DeviceListItem(device: DeviceEntity, context: Context, onClick: () -> Unit) 
     var deviceStatus by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(device.id) {
+    LaunchedEffect(device.deviceId) {
         coroutineScope.launch(Dispatchers.IO) {
-            buttons = getButtonsForDevice(device.id, context)
-            deviceStatus = checkDeviceStatus(device.ip, device.id) {}
+            buttons = DeviceRepository.getButtonsForDevice(device.deviceId, context)
+            deviceStatus = try {
+                getEspDeviceInfo(device.localIp)
+                true
+            } catch (error: Exception) {
+                false
+            }
         }
     }
 
@@ -135,25 +156,5 @@ fun DeviceListItem(device: DeviceEntity, context: Context, onClick: () -> Unit) 
         Spacer(modifier = Modifier.height(8.dp))
 
         Divider(modifier = Modifier.padding(vertical = 8.dp))
-    }
-}
-
-fun getButtonsForDevice(deviceId: String, context: Context): List<ButtonEntity> {
-    val db = AppDatabase.getDatabase(context)
-    return db.buttonDao().getButtonsForDevice(deviceId)
-}
-
-fun addButtonForDevice(deviceId: String, button: Int, name: String, context: Context) {
-    val db = AppDatabase.getDatabase(context)
-    val currentButtons = db.buttonDao().getButtonsForDevice(deviceId).toMutableList()
-
-    if (button !in currentButtons.map { it.buttonNumber }) {
-        val entity = ButtonEntity(
-            deviceId = deviceId,
-            buttonNumber = button,
-            name = name
-        )
-        currentButtons.add(entity)
-        db.buttonDao().insertButton(entity)
     }
 }

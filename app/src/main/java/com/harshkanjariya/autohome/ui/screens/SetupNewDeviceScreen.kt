@@ -1,10 +1,5 @@
 package com.harshkanjariya.autohome.ui.screens
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.net.wifi.WifiManager
-import android.os.Build
 import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,19 +9,21 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
+import com.harshkanjariya.autohome.api.dto.EspDeviceInfoDto
 import com.harshkanjariya.autohome.api.getDeviceSsidList
-import com.harshkanjariya.autohome.api.getEspDeviceId
+import com.harshkanjariya.autohome.api.getEspDeviceInfo
 import com.harshkanjariya.autohome.api.updateEspWifiConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.harshkanjariya.autohome.R
 
 // Enum class for connection states
 enum class ConnectionState {
@@ -39,9 +36,10 @@ enum class ConnectionState {
 // New component to handle the form for Wi-Fi SSID and Password, managing its own state
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeviceConfigForm(wifiList: List<String>, onSubmit: (ssid: String, password: String) -> Unit) {
+fun DeviceConfigForm(hideDevicePassword: Boolean, wifiList: List<String>, onSubmit: (ssid: String, password: String, devicePassword: String) -> Unit) {
     var selectedSsid by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var devicePassword by remember { mutableStateOf("") }
     var expanded by remember(wifiList) {
         mutableStateOf(wifiList.isNotEmpty())
     }
@@ -76,7 +74,7 @@ fun DeviceConfigForm(wifiList: List<String>, onSubmit: (ssid: String, password: 
             }
         }
         Row {
-            Text(text = "Password: ")
+            Text(text = "Wifi Password: ")
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -84,8 +82,19 @@ fun DeviceConfigForm(wifiList: List<String>, onSubmit: (ssid: String, password: 
             )
         }
 
+        if (!hideDevicePassword) {
+            Row {
+                Text(text = "Device Password: ")
+                OutlinedTextField(
+                    value = devicePassword,
+                    onValueChange = { devicePassword = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
         Button(onClick = {
-            onSubmit(selectedSsid, password)
+            onSubmit(selectedSsid, password, devicePassword)
         }) {
             Text(text = "Submit")
         }
@@ -94,11 +103,8 @@ fun DeviceConfigForm(wifiList: List<String>, onSubmit: (ssid: String, password: 
 
 @Composable
 fun SetupNewDevice(gatewayIp: String) {
-    val context = LocalContext.current
-    val wifiManager =
-        context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
     val wifiList = remember { mutableStateListOf<String>() }
-    var deviceId: String? by remember { mutableStateOf(null) }
+    var device: EspDeviceInfoDto? by remember { mutableStateOf(null) }
     var connectionState by remember { mutableStateOf(ConnectionState.LOADING) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -111,7 +117,7 @@ fun SetupNewDevice(gatewayIp: String) {
                 Log.e("SetupNewDevice", "Error retrieving ssids", e)
             }
             try {
-                deviceId = getEspDeviceId(gatewayIp)
+                device = getEspDeviceInfo(gatewayIp)
                 connectionState = ConnectionState.CONNECTED
             } catch (e: Exception) {
                 Log.e("SetupNewDevice", "Error retrieving device ID", e)
@@ -123,18 +129,30 @@ fun SetupNewDevice(gatewayIp: String) {
     // Update displayed text based on the connection state
     val displayText = when (connectionState) {
         ConnectionState.LOADING -> "Loading..."
-        ConnectionState.CONNECTED -> "Connected to device: $deviceId"
+        ConnectionState.CONNECTED -> "Connected to device: ${device?.deviceId}"
         ConnectionState.NOT_CONNECTED -> "Not connected to any AutoHome device"
         ConnectionState.RESTARTING -> "Restarting Device..."
     }
 
     Column(Modifier.padding(8.dp)) {
-        Text(displayText, style = MaterialTheme.typography.bodyMedium)
+        Row {
+            Text(
+                displayText,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            if (device?.isRegistered == true) {
+                Icon(painter = painterResource(id = R.drawable.baseline_lock_24), contentDescription = "lock")
+            }
+        }
+        if (device != null) {
+            Text(text = "ip: $gatewayIp")
+        }
 
-        if (connectionState == ConnectionState.CONNECTED) {
-            DeviceConfigForm(wifiList = wifiList) { ssid, password ->
+        if (connectionState == ConnectionState.CONNECTED && device != null) {
+            DeviceConfigForm(device?.isRegistered == true, wifiList = wifiList) { ssid, password, devicePassword ->
                 coroutineScope.launch(Dispatchers.IO) {
-                    updateEspWifiConfig(gatewayIp, ssid, password) {
+                    updateEspWifiConfig(gatewayIp, ssid, password, devicePassword) {
                         connectionState = ConnectionState.RESTARTING
                     }
                 }
