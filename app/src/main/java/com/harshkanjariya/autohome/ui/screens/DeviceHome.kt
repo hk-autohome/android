@@ -18,14 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
-import com.harshkanjariya.autohome.api.checkDeviceStatus
 import com.harshkanjariya.autohome.api.getEspDeviceInfo
 import com.harshkanjariya.autohome.api.repositories.DeviceRepository
 
 const val LIMIT = 10
 
 @Composable
-fun DevicesHome(context: Context, openFindDeviceActivity: () -> Unit, navigate: (String) -> Unit) {
+fun DevicesHome(context: Context, openFindDeviceActivity: () -> Unit, navigate: (DeviceEntity) -> Unit) {
     var devices by remember { mutableStateOf(listOf<DeviceEntity>()) }
     var refreshing by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -69,7 +68,7 @@ fun DevicesHome(context: Context, openFindDeviceActivity: () -> Unit, navigate: 
                     items(devices.size) { index ->
                         val device = devices[index]
                         DeviceListItem(device = device, context = context) {
-                            navigate(device.deviceId)
+                            navigate(device)
                         }
 
                         if (index == devices.size - 1 && hasMoreData && !isLoading) {
@@ -146,7 +145,7 @@ fun DeviceListItem(device: DeviceEntity, context: Context, onClick: () -> Unit) 
                         .padding(start = 8.dp)
                         .size(10.dp)
                         .background(
-                            color = if (deviceStatus) Color.Green else Color.Red,
+                            color = if (deviceStatus) Color(0, 144, 0) else Color.Red,
                             shape = CircleShape
                         )
                 )

@@ -13,13 +13,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.harshkanjariya.autohome.api.Mqtt
+import com.harshkanjariya.autohome.db.entity.DeviceEntity
 import com.harshkanjariya.autohome.ui.components.MainDrawer
 import com.harshkanjariya.autohome.ui.main.MainContract
 import com.harshkanjariya.autohome.ui.theme.AutoHomeTheme
 import kotlinx.coroutines.launch
 
 @Composable
-fun MainScreen(state: MainContract.State, onLogout: () -> Unit, openFindDeviceActivity: () -> Unit) {
+fun MainScreen(
+    state: MainContract.State,
+    mqtt: Mqtt,
+    onLogout: () -> Unit,
+    openFindDeviceActivity: () -> Unit
+) {
     val context = LocalContext.current
 
     AutoHomeTheme {
@@ -43,24 +50,24 @@ fun MainScreen(state: MainContract.State, onLogout: () -> Unit, openFindDeviceAc
                 )
             }
         ) {
-            Scaffold {
-                NavHost(
-                    navController = navController,
-                    startDestination = "devicesList",
-                    modifier = Modifier.padding(it)
-                ) {
-                    composable("devicesList") {
-                        DevicesHome(context, openFindDeviceActivity) { deviceId ->
-                            navController.navigate("deviceDetails/$deviceId")
-                        }
+            NavHost(
+                navController = navController,
+                startDestination = "devicesList",
+            ) {
+                composable("devicesList") {
+                    DevicesHome(context, openFindDeviceActivity) { device ->
+                        navController.navigate("deviceDetails/${device.toJson()}")
                     }
-                    composable("deviceDetails/{deviceId}") { backStackEntry ->
-                        val deviceId = backStackEntry.arguments?.getString("deviceId")
-                        DeviceDetailScreen(deviceId!!, context = context)
+                }
+                composable("deviceDetails/{device}") { backStackEntry ->
+                    val device = backStackEntry.arguments?.getString("device")
+                    val parsedDevice = device?.let {
+                        DeviceEntity.fromJson(it)
                     }
-                    composable("new_device") {
-                        SetupNewDevice(state.gatewayIp)
-                    }
+                    DeviceDetailScreen(parsedDevice!!, context = context, mqtt = mqtt)
+                }
+                composable("new_device") {
+                    SetupNewDevice(state.gatewayIp)
                 }
             }
         }

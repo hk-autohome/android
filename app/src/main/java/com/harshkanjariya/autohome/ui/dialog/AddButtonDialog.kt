@@ -35,7 +35,7 @@ fun AddButtonDialog(
     var selectedIndex by remember { mutableStateOf<Int?>(null) } // For number selection
     val context = LocalContext.current
 
-    val existingNumbers = existingButtons.map { it.buttonNumber }
+    val existingNumbers = existingButtons.map { it.pinNumber }
     val allowedNumbers =
         listOf(2, 4, 13, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33)
 

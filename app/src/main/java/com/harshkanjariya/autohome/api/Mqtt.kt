@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import com.harshkanjariya.autohome.BuildConfig
 import com.harshkanjariya.autohome.ui.main.MainActivity
 import com.harshkanjariya.autohome.R
+import com.harshkanjariya.autohome.api.dto.MqttPayloadDto
 import info.mqtt.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
@@ -20,6 +21,7 @@ import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import java.nio.charset.Charset
 
 
 class Mqtt {
@@ -27,6 +29,7 @@ class Mqtt {
     private val serverURI = BuildConfig.MQTT_URL
     private val serverUsername = BuildConfig.MQTT_USERNAME
     private val serverPassword = BuildConfig.MQTT_PASSWORD
+    private val messageCallbacks: HashMap<String, (String) -> Unit> = HashMap()
 
     companion object {
         const val TAG = "AndroidMqttClient"
@@ -41,6 +44,9 @@ class Mqtt {
         mqttClient?.setCallback(object : MqttCallback {
             override fun messageArrived(topic: String?, message: MqttMessage?) {
                 Log.d(TAG, "Receive message: ${message.toString()} from topic: $topic")
+                if (topic != null && message != null && messageCallbacks.containsKey(topic)) {
+                    messageCallbacks[topic]?.let { it(message.payload.toString(Charset.defaultCharset())) }
+                }
             }
 
             override fun connectionLost(cause: Throwable?) {
@@ -94,16 +100,16 @@ class Mqtt {
         )
 
         return NotificationCompat.Builder(context, "com.harshkanjariya.autohome")
-            .setContentTitle("MQTT Service")
-            .setContentText("MQTT is running in the background")
+            .setContentTitle("AutoHome")
+            .setContentText("Remote is running")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
             .build()
     }
 
-    fun sendMessage(s: String) {
-        val msg = MqttMessage(s.toByteArray())
-        mqttClient?.publish("esp32/output", msg)
+    fun sendMessage(topic: String, s: MqttPayloadDto) {
+        val msg = MqttMessage(s.toJson().toByteArray())
+        mqttClient?.publish(topic, msg)
     }
     fun disconnect() {
         if (mqttClient == null) return
@@ -124,12 +130,13 @@ class Mqtt {
         }
     }
 
-    fun subscribe(topic: String, qos: Int = 0) {
+    fun subscribe(topic: String, qos: Int = 0, callback: (String) -> Unit ) {
         if (mqttClient == null) return
         try {
             mqttClient!!.subscribe(topic, qos, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
                     Log.d(TAG, "Subscribed to $topic")
+                    messageCallbacks[topic] = callback
                 }
 
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
@@ -147,6 +154,7 @@ class Mqtt {
             mqttClient!!.unsubscribe(topic, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
                     Log.d(TAG, "Unsubscribed to $topic")
+                    messageCallbacks.remove(topic)
                 }
 
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
@@ -157,5 +165,4 @@ class Mqtt {
             e.printStackTrace()
         }
     }
-
 }

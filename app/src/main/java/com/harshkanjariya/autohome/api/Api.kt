@@ -145,6 +145,28 @@ class Api private constructor() {
         })
     }
 
+    fun <T> postSync(endpoint: String, responseType: Type, jsonBody: String = "{}", token: Boolean = true): T? {
+        val body = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+        val requestBuilder = Request.Builder()
+            .url(buildUrl(endpoint))
+            .post(body)
+
+        // Add the token header if provided
+        if (token) {
+            requestBuilder.addHeader("Authorization", "Bearer $jwtToken")
+        }
+
+        val response = client.newCall(requestBuilder.build()).execute()
+
+        // Convert the response body to string
+        val stringResponse = response.body?.string()
+
+        // Deserialize using Gson
+        return stringResponse?.let {
+            Gson().fromJson<T>(it, responseType)
+        }
+    }
+
     // PUT Request with optional token
     fun put(endpoint: String, jsonBody: String, callback: ApiResponseCallback, token: Boolean = true) {
         val body = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())

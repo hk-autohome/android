@@ -48,7 +48,9 @@ class MainActivity : ComponentActivity() {
 
         setupUI()
 
-        viewModel.verifyAuthToken {
+        viewModel.verifyAuthToken({ email ->
+            mqtt.connect(this, "android/$email")
+        }) {
             redirectToLogin()
         }
 
@@ -98,7 +100,7 @@ class MainActivity : ComponentActivity() {
             val state = viewModel.state.collectAsStateWithLifecycleWithValue()
 
             if (state.isAuthenticated) {
-                MainScreen(state, onLogout = {
+                MainScreen(state, mqtt, onLogout = {
                     viewModel.logout {
                         redirectToLogin()
                     }

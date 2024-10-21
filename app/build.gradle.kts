@@ -25,7 +25,7 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "API_BASE_URL", "\"http://192.168.1.8:3000\"")
+            buildConfigField("String", "API_BASE_URL", "\"http://192.168.0.148:3000\"")
             buildConfigField("String", "MQTT_URL", "\"ssl://5b960086f3b74b0d965b7532908b1914.s1.eu.hivemq.cloud:8883\"")
             buildConfigField("String", "MQTT_USERNAME", "\"hivemq.webclient.1728037900518\"")
             buildConfigField("String", "MQTT_PASSWORD", "\"hBH0Kar@b>;9x21Zg:AR\"")
@@ -124,4 +124,6 @@ dependencies {
     implementation("org.eclipse.paho:org.eclipse.paho.android.service:1.1.1")
     implementation("com.google.android.gms:play-services-auth:20.2.0")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    implementation("com.auth0:java-jwt:4.2.0")
 }

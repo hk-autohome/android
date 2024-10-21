@@ -87,7 +87,8 @@ class FindDevicesActivity : ComponentActivity() {
                             localIp = selectedDevice.ip,
                             password = selectedDevice.password ?: "",
                             version = selectedDevice.version,
-                            name = deviceName
+                            name = deviceName,
+                            pinCode = selectedDevice.pinCode,
                         ),
                     ) {
                         finish()

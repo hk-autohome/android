@@ -6,3 +6,8 @@ data class EspDeviceInfoDto(
     val isRegistered: Boolean,
     val pinCode: String,
 )
+
+data class EspButtonTriggerResponseDto(
+    val pin: Int,
+    val on: Boolean,
+)

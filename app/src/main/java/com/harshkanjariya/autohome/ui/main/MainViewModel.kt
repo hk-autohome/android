@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.viewModelScope
+import com.auth0.jwt.JWT
 import com.harshkanjariya.autohome.api.getEspDeviceInfo
 import com.harshkanjariya.autohome.models.DiscoveredDevice
 import com.harshkanjariya.autohome.utils.DataStoreKeys
@@ -41,7 +42,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun verifyAuthToken(onFail: () -> Unit) {
+    fun verifyAuthToken(onComplete: (String) -> Unit, onFail: () -> Unit) {
         viewModelScope.launch {
             dataStore.data.map { preferences ->
                 preferences[DataStoreKeys.TOKEN] ?: ""
@@ -49,6 +50,10 @@ class MainViewModel @Inject constructor(
                 if (token.isEmpty()) {
                     onFail()
                 } else {
+                    val decodedJWT = JWT.decode(token)
+                    val email = decodedJWT.getClaim("email").asString()
+
+                    onComplete(email)
                     setState {
                         copy(isAuthenticated = true)
                     }
