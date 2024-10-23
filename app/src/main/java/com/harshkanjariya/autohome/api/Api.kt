@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.google.gson.Gson
 import com.harshkanjariya.autohome.BuildConfig
+import com.harshkanjariya.autohome.api.dto.getResponseType
 import com.harshkanjariya.autohome.utils.DataStoreKeys
 import com.pluto.plugins.network.okhttp.PlutoOkhttpInterceptor
 import kotlinx.coroutines.CoroutineScope
@@ -22,13 +23,13 @@ import javax.inject.Singleton
 @Singleton
 class Api private constructor() {
     private var jwtToken: String? = null
+    private var BASE_URL: String = ""
 
     private val client: OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(PlutoOkhttpInterceptor)
         .build()
 
     companion object {
-        private const val BASE_URL = BuildConfig.API_BASE_URL
         private var instance: Api? = null
 
         // Initialize the Api instance with DataStore
@@ -37,10 +38,9 @@ class Api private constructor() {
                 instance = Api()
                 // Read JWT token from DataStore and assign it to the Api instance
                 CoroutineScope(Dispatchers.IO).launch {
-                    dataStore.data.map { preferences ->
-                        preferences[DataStoreKeys.TOKEN] ?: ""
-                    }.collect { token ->
-                        instance?.jwtToken = if (token.isNotEmpty()) token else null
+                    dataStore.data.collect { preferences ->
+                        instance?.jwtToken = preferences[DataStoreKeys.TOKEN]
+                        instance?.BASE_URL = preferences[DataStoreKeys.API_BASE_URL] ?: BuildConfig.API_BASE_URL
                     }
                 }
             }

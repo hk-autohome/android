@@ -15,19 +15,25 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.harshkanjariya.autohome.R
+import com.harshkanjariya.autohome.utils.NavRoutes
 
 @Composable
 fun MainDrawer(navController: NavController, currentRoute: String, onLogout: () -> Unit, closeDrawer: () -> Unit) {
     val drawerItems = listOf(
         NavigationItem(
             title = "Home",
-            route = "devicesList",
+            route = NavRoutes.DEVICE_LIST,
             icon = R.drawable.baseline_home_24
         ),
         NavigationItem(
             title = "Setup New Device",
-            route = "new_device",
+            route = NavRoutes.NEW_DEVICE,
             icon = R.drawable.baseline_electrical_services_24
+        ),
+        NavigationItem(
+            title = "Settings",
+            route = NavRoutes.SETTINGS,
+            icon = R.drawable.baseline_settings_24
         )
     )
 

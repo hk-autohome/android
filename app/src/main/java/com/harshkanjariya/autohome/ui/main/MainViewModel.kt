@@ -1,17 +1,13 @@
 package com.harshkanjariya.autohome.ui.main
 
-import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.viewModelScope
 import com.auth0.jwt.JWT
-import com.harshkanjariya.autohome.api.getEspDeviceInfo
-import com.harshkanjariya.autohome.models.DiscoveredDevice
 import com.harshkanjariya.autohome.utils.DataStoreKeys
 import com.harshkanjariya.autohome.utils.MVIBaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -31,6 +27,13 @@ class MainViewModel @Inject constructor(
     }
 
     override fun handleEffect(effect: MainContract.Effect) {
+        viewModelScope.launch {
+            dataStore.data.collect {
+                setState {
+                    copy(showDeviceDetails = it[DataStoreKeys.SETTINGS_SHOW_DEVICE_DETAILS] ?: false)
+                }
+            }
+        }
     }
 
     fun logout(onComplete: () -> Unit) {

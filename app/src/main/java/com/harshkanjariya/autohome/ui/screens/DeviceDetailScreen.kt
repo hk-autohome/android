@@ -39,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import com.google.gson.Gson
 import com.harshkanjariya.autohome.api.Mqtt
 import com.harshkanjariya.autohome.api.dto.EspButtonTriggerResponseDto
@@ -58,13 +60,21 @@ import com.harshkanjariya.autohome.api.triggerCalibration
 import com.harshkanjariya.autohome.api.triggerSwitch
 import com.harshkanjariya.autohome.models.CalibrationData
 import com.harshkanjariya.autohome.ui.dialog.CalibrationDialog
+import com.harshkanjariya.autohome.utils.DataStoreKeys
 import com.harshkanjariya.autohome.utils.getDefaultButtons
 import com.harshkanjariya.autohome.utils.getPinIndex
 import com.harshkanjariya.autohome.utils.getPinNumbers
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun DeviceDetailScreen(device: DeviceEntity, context: Context, mqtt: Mqtt) {
+fun DeviceDetailScreen(
+    device: DeviceEntity,
+    context: Context,
+    mqtt: Mqtt,
+    showDeviceDetails: Boolean
+) {
     var buttons by remember { mutableStateOf(getDefaultButtons()) }
     var isDeviceLocallyOnline by remember { mutableStateOf(false) }
     val errorMessage by remember { mutableStateOf<String?>(null) }
@@ -141,9 +151,11 @@ fun DeviceDetailScreen(device: DeviceEntity, context: Context, mqtt: Mqtt) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(text = "id: ${device.deviceId}", style = MaterialTheme.typography.bodyLarge)
-                Text(text = "ip: ${device.localIp}", style = MaterialTheme.typography.bodyLarge)
+            if (showDeviceDetails) {
+                Column {
+                    Text(text = "id: ${device.deviceId}", style = MaterialTheme.typography.bodyLarge)
+                    Text(text = "ip: ${device.localIp}", style = MaterialTheme.typography.bodyLarge)
+                }
             }
             Button(
                 onClick = {

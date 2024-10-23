@@ -8,7 +8,8 @@ import com.harshkanjariya.autohome.utils.MVIState
 class MainContract {
     data class State(
         val isAuthenticated: Boolean = false,
-        val gatewayIp: String = ""
+        val gatewayIp: String = "",
+        val showDeviceDetails: Boolean = false,
     ) : MVIState
 
     sealed class Event : MVIEvent

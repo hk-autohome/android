@@ -4,7 +4,9 @@ import android.app.Application
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.harshkanjariya.autohome.api.Api
+import com.harshkanjariya.autohome.firebase.MyRemoteConfig
 import com.pluto.Pluto
+import com.pluto.plugins.datastore.pref.PlutoDatastorePreferencesPlugin
 import com.pluto.plugins.network.PlutoNetworkPlugin
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -20,8 +22,10 @@ class MyApplication : Application() {
         if (BuildConfig.DEBUG) {
             Pluto.Installer(this)
                 .addPlugin(PlutoNetworkPlugin())
+                .addPlugin(PlutoDatastorePreferencesPlugin())
                 .install()
         }
         Api.init(dataStore)
+        MyRemoteConfig.init(dataStore)
     }
 }

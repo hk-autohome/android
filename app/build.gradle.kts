@@ -1,3 +1,23 @@
+import java.net.NetworkInterface
+import java.net.InetAddress
+import java.util.Collections
+
+fun getLocalIpAddress(): String {
+    val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
+    for (networkInterface in interfaces) {
+        val addresses = Collections.list(networkInterface.inetAddresses)
+        for (address in addresses) {
+            if (!address.isLoopbackAddress && address is InetAddress) {
+                val ip = address.hostAddress
+                if (ip.startsWith("192.168")) {
+                    return ip
+                }
+            }
+        }
+    }
+    throw RuntimeException("No valid local IP address found")
+}
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
@@ -25,16 +45,18 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("String", "API_BASE_URL", "\"http://192.168.0.148:3000\"")
+            buildConfigField("String", "API_BASE_URL", "\"http://${getLocalIpAddress()}:3000\"")
             buildConfigField("String", "MQTT_URL", "\"ssl://5b960086f3b74b0d965b7532908b1914.s1.eu.hivemq.cloud:8883\"")
             buildConfigField("String", "MQTT_USERNAME", "\"hivemq.webclient.1728037900518\"")
             buildConfigField("String", "MQTT_PASSWORD", "\"hBH0Kar@b>;9x21Zg:AR\"")
+            buildConfigField("Long", "FIREBASE_REMOTE_CONFIG_FETCH_INTERVAL", "3600L")
         }
         release {
-            buildConfigField("String", "API_BASE_URL", "\"https://api.auto-home.in\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://api.autohome.today\"")
             buildConfigField("String", "MQTT_URL", "\"ssl://5b960086f3b74b0d965b7532908b1914.s1.eu.hivemq.cloud:8883\"")
             buildConfigField("String", "MQTT_USERNAME", "\"hivemq.webclient.1728037900518\"")
             buildConfigField("String", "MQTT_PASSWORD", "\"hBH0Kar@b>;9x21Zg:AR\"")
+            buildConfigField("Long", "FIREBASE_REMOTE_CONFIG_FETCH_INTERVAL", "3600L")
 
             isMinifyEnabled = false
             proguardFiles(
@@ -84,6 +106,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.googleid)
     implementation(libs.androidx.activity)
+    implementation(libs.firebase.config)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -105,10 +128,17 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
 
 
+    // pluto
     debugImplementation("com.plutolib:pluto:$plutoVersion")
     debugImplementation("com.plutolib.plugins:network:$plutoVersion")
     debugImplementation("com.plutolib.plugins:network-interceptor-okhttp:$plutoVersion")
+    debugImplementation("com.plutolib.plugins:datastore-pref:$plutoVersion")
+    releaseImplementation("com.plutolib:pluto:$plutoVersion")
+    releaseImplementation("com.plutolib.plugins:network:$plutoVersion")
+    releaseImplementation("com.plutolib.plugins:datastore-pref-no-op:$plutoVersion")
+    releaseImplementation("com.plutolib.plugins:network-interceptor-okhttp:$plutoVersion")
     releaseImplementation("com.plutolib.plugins:network-interceptor-ktor-no-op:$plutoVersion")
+
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.navigation:navigation-compose:2.8.1")
     implementation("com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.3")

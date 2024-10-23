@@ -10,6 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -18,14 +20,16 @@ import com.harshkanjariya.autohome.db.entity.DeviceEntity
 import com.harshkanjariya.autohome.ui.components.MainDrawer
 import com.harshkanjariya.autohome.ui.main.MainContract
 import com.harshkanjariya.autohome.ui.theme.AutoHomeTheme
+import com.harshkanjariya.autohome.utils.NavRoutes
 import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(
     state: MainContract.State,
     mqtt: Mqtt,
+    dataStore: DataStore<Preferences>,
     onLogout: () -> Unit,
-    openFindDeviceActivity: () -> Unit
+    openFindDeviceActivity: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -52,22 +56,30 @@ fun MainScreen(
         ) {
             NavHost(
                 navController = navController,
-                startDestination = "devicesList",
+                startDestination = NavRoutes.DEVICE_LIST,
             ) {
-                composable("devicesList") {
-                    DevicesHome(context, openFindDeviceActivity) { device ->
-                        navController.navigate("deviceDetails/${device.toJson()}")
+                composable(NavRoutes.DEVICE_LIST) {
+                    DevicesHome(context, onLogout, openFindDeviceActivity) { device ->
+                        navController.navigate(NavRoutes.DEVICE_DETAILS(device.toJson()))
                     }
                 }
-                composable("deviceDetails/{device}") { backStackEntry ->
+                composable(NavRoutes.DEVICE_DETAILS()) { backStackEntry ->
                     val device = backStackEntry.arguments?.getString("device")
                     val parsedDevice = device?.let {
                         DeviceEntity.fromJson(it)
                     }
-                    DeviceDetailScreen(parsedDevice!!, context = context, mqtt = mqtt)
+                    DeviceDetailScreen(
+                        device = parsedDevice!!,
+                        context = context,
+                        mqtt = mqtt,
+                        showDeviceDetails = state.showDeviceDetails
+                    )
                 }
-                composable("new_device") {
+                composable(NavRoutes.NEW_DEVICE) {
                     SetupNewDevice(state.gatewayIp)
+                }
+                composable(NavRoutes.SETTINGS) {
+                    SettingsScreen(dataStore, onLogout)
                 }
             }
         }

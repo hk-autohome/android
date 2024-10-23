@@ -100,13 +100,18 @@ class MainActivity : ComponentActivity() {
             val state = viewModel.state.collectAsStateWithLifecycleWithValue()
 
             if (state.isAuthenticated) {
-                MainScreen(state, mqtt, onLogout = {
-                    viewModel.logout {
-                        redirectToLogin()
-                    }
-                }) {
-                    startActivity(Intent(this@MainActivity, FindDevicesActivity::class.java))
-                }
+                MainScreen(
+                    state = state,
+                    mqtt = mqtt,
+                    onLogout = {
+                        viewModel.logout {
+                            redirectToLogin()
+                        }
+                    }, openFindDeviceActivity = {
+                        startActivity(Intent(this@MainActivity, FindDevicesActivity::class.java))
+                    },
+                    dataStore = viewModel.dataStore
+                )
             } else {
                 Text("Loading...")
             }

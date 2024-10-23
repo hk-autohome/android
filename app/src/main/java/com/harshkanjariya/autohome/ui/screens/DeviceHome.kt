@@ -24,7 +24,7 @@ import com.harshkanjariya.autohome.api.repositories.DeviceRepository
 const val LIMIT = 10
 
 @Composable
-fun DevicesHome(context: Context, openFindDeviceActivity: () -> Unit, navigate: (DeviceEntity) -> Unit) {
+fun DevicesHome(context: Context, onUnauthorized: () -> Unit, openFindDeviceActivity: () -> Unit, navigate: (DeviceEntity) -> Unit) {
     var devices by remember { mutableStateOf(listOf<DeviceEntity>()) }
     var refreshing by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -35,7 +35,7 @@ fun DevicesHome(context: Context, openFindDeviceActivity: () -> Unit, navigate: 
     // Load initial devices on launch
     LaunchedEffect(Unit) {
         coroutineScope.launch(Dispatchers.IO) {
-            DeviceRepository.getDevices(page, LIMIT).let { newDevices ->
+            DeviceRepository.getDevices(page, LIMIT, onUnauthorized).let { newDevices ->
                 devices = newDevices
                 hasMoreData = newDevices.size == LIMIT
                 page = if (hasMoreData) 2 else 1
@@ -49,7 +49,7 @@ fun DevicesHome(context: Context, openFindDeviceActivity: () -> Unit, navigate: 
             refreshing = true
             page = 1
             coroutineScope.launch(Dispatchers.IO) {
-                DeviceRepository.getDevices(page).let { newDevices ->
+                DeviceRepository.getDevices(page, LIMIT, onUnauthorized).let { newDevices ->
                     devices = newDevices
                     hasMoreData = newDevices.size == LIMIT
                     page = if (hasMoreData) 2 else 1
@@ -74,7 +74,7 @@ fun DevicesHome(context: Context, openFindDeviceActivity: () -> Unit, navigate: 
                         if (index == devices.size - 1 && hasMoreData && !isLoading) {
                             isLoading = true
                             coroutineScope.launch(Dispatchers.IO) {
-                                DeviceRepository.getDevices(page + 1).let { newDevices ->
+                                DeviceRepository.getDevices(page + 1, LIMIT, onUnauthorized).let { newDevices ->
                                     if (newDevices.isNotEmpty()) {
                                         devices = devices + newDevices
                                         page += 1

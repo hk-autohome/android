@@ -1,9 +1,11 @@
 package com.harshkanjariya.autohome.api.repositories
 
 import android.content.Context
+import android.util.Log
 import android.widget.Button
 import com.google.gson.Gson
 import com.harshkanjariya.autohome.api.Api
+import com.harshkanjariya.autohome.api.dto.ApiResponseDto
 import com.harshkanjariya.autohome.api.dto.getResponseType
 import com.harshkanjariya.autohome.db.entity.ButtonEntity
 import com.harshkanjariya.autohome.db.entity.DeviceEntity
@@ -15,11 +17,11 @@ class DeviceRepository {
     companion object {
         val api = Api.getInstance()
 
-        fun getDevices(page: Int = 1, limit: Int = 10): List<DeviceEntity> {
-            val responseType = getResponseType<List<DeviceEntity>>()
+        fun getDevices(page: Int = 1, limit: Int = 10, onUnauthorized: () -> Unit): List<DeviceEntity> {
+            val responseType = getResponseType<ApiResponseDto<List<DeviceEntity>>>()
 
             try {
-                return api.getSync<List<DeviceEntity>>(
+                val response = api.getSync<ApiResponseDto<List<DeviceEntity>>>(
                     ApiUrl.USER_DEVICES,
                     responseType,
                     mapOf(
@@ -28,6 +30,12 @@ class DeviceRepository {
                     ),
                     true,
                 ) ?: return emptyList()
+                return if (response.statusCode == 401) {
+                    onUnauthorized()
+                    emptyList()
+                } else {
+                    response.data
+                }
             } catch (error: Exception) {
                 return emptyList()
             }
